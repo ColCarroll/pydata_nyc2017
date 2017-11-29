@@ -19,6 +19,7 @@ I won't answer any of your questions if you are having this much fun).
 To view
 -------
 ```
+source activate pydata_nyc20173.6
 jupyter notebook
 ```
 
