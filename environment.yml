@@ -1,5 +1,6 @@
 name: pydata_nyc20173.6
 channels:
+- damianavila82
 - conda-forge
 - defaults
 dependencies:
@@ -26,6 +27,7 @@ dependencies:
 - theano=0.9.0=py36_1
 - tornado=4.5.2=py36_0
 - tqdm=4.19.4=py_0
+- rise=5.1.0=py36_0
 - appnope=0.1.0=py36hf537a9a_0
 - bleach=2.0.0=py36h8fcea71_0
 - ca-certificates=2017.08.26=ha1e5d58_0
