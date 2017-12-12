@@ -1,0 +1,589 @@
+<html>
+<head>
+<title>Linear Regression</title>
+<meta charset="utf-8" />
+    <!-- css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tufte-css/1.3/tufte.min.css" />
+<style>
+
+  td {
+    vertical-align: top;
+    padding: 20px;
+  }
+  #main {
+    text-align:left;
+  }
+  code {
+    background-color:#EEEEEE;
+    font-family:Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New;
+  }
+  img {
+    border:4px solid #196786;
+    width:300px;
+    height:225px;
+        max-width: none;
+  }
+  .logo {
+    border: none;
+    width: auto;
+    height: 4em;
+    margin-top: 3em;
+  }
+  a.toc {
+    text-decoration:none;
+    color: inherit;
+  }
+  hr {
+    border:2px solid #196786;
+  }
+  p, table {
+    width: 80%; 
+  }
+
+</style>
+</head>
+
+<body>
+<div id="main">
+
+<div style="display: inline-block">
+  <img src="line.svg" class=logo style="float: left"></img>
+  <h1>Linear Regression</h1>
+</div>
+
+<p> This is part 1 of a three part workshop from PyData NYC in 2017. I converted my slides and notes to this essay, so I would have some artifact of the talk.  I hope you find the notes useful, and would love to hear from you about them!  That said, I likely will not change them, so that they remain a record of what was actually covered that fateful day in November. 
+<p><a href="index.html">Back to main table of contents</a>
+
+<hr/>
+
+<table cellspacing=10>
+
+    <tr>
+      <td colspan="2">
+        <ol>
+          <li><a href="#theData">The Data</a></li>
+          <li><a href="#sklearn">Linear Regression in Scikit Learn</a></li>
+          <li><a href="#numpy">Linear Regression in Numpy</a></li>
+          <li><a href="#regularization">Linear Regression with Regularization</a></li>
+        </ol>
+      </td>
+    </tr>
+
+	<tr>
+	  <td colspan="2">
+		<div style="display: inline-block">
+		  <a name="theData" class=toc href="#theData">
+			<img src="line.svg" class=logo style="float: left"></img>
+			<h1 style="float: right;">The Data</h1>
+		  </a>
+		</div>
+		<hr/>
+	  </td>
+
+	</tr>
+
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-01.png">
+            <img src="thumbs/Linear_Regression_slides-01.png">
+          </a>
+        </td>
+
+        <td>
+          <p> We are going to use a very non-linear dataset to practice linear regression.  This
+            polynomial provides a dataset that requires high dimensional features to fit, but can 
+            still be visualized in two dimensions. Specifically, there is a file in 
+            <a href="https://github.com/ColCarroll/pydata_nyc2017">the repo</a> called 
+            <code>utils.py</code> that will sample 100 random points between -3 and +3 to be our 
+            <i>x</i> data, and then pass it through 
+            <i>f(x) = x<sup>3</sup> + x<sup>2</sup> - 4x </i> to generate our <i>y</i> data. 
+
+          <p>While generating the data and labels, we also generate the perfect feature vector, 
+            <i>X</i>, effectively telling our model that this is a 3rd degree polynomial. 
+
+          <p> There are a few downsides to fitting a polynomial, a major pain point being that
+              they get very big very quickly, so the random seeds we are using are not random
+              at all: I actually did a search to get a "good" random dataset. There will also
+              be a few funny things we will do to take care of these explosions. A good example 
+              is the <code>scale</code> variable that we generate when generating data. This
+              is a vector used to normalize the columns of features, and helps a lot with numeric 
+              stability, though we will not talk explicitly about normalization today.  That 
+              <code>scale</code> vector will show up in a few places to do bookkeeping, along
+              with the <code>transform</code> function.
+
+          <p> Notice that this dataset is deterministic, meaning that we have not perturbed
+            it with any noise. Any algorithm worth its salt should be able to recover this 
+            polynomial exactly, and our strategy today will be to fit algorithms first to this 
+            dataset, and confirm that we do ok here. In particular, we will make sure that
+            each algorithm can recover the coefficients [0, -4, 1, 1].
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-02.png">
+            <img src="thumbs/Linear_Regression_slides-02.png">
+          </a>
+        </td>
+
+        <td>
+          <p> After confirming we can recover these coefficients on the deterministic data set, 
+              we will want to see how our algorithm does on noisy data. We also “randomly” draw 
+              some normally distributed, standard deviation 1 noise that we will add on to this 
+              same dataset.
+        </td>
+    </tr>
+
+	<tr>
+	  <td colspan="2">
+		<div style="display: inline-block">
+		  <a name="sklearn" class=toc href="#sklearn">
+			<img src="line.svg" class=logo style="float: left"></img>
+			<h1 style="float: right;">Linear Regression in Scikit-Learn</h1>
+		  </a>
+		</div>
+		<hr/>
+	  </td>
+
+	</tr>
+
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-03.png">
+            <img src="thumbs/Linear_Regression_slides-03.png">
+          </a>
+        </td>
+
+        <td>
+          <p> One way to think about machine learning is to write down a functional form for a 
+            model, and then design an algorithm so that the machine can learn the best parameters 
+            for that model. Following convention, lowercase italic "<i>y</i>" represents a single 
+            number, bold "<b>x</b>" represents a column vector and capital "<i>X</i>" represents
+            a matrix, which is a vector of vectors.  We also follow the convention that 
+            <b>x</b> are features, <i>y</i> are labels, and <b>w</b> are weights, or parameters.
+
+            <p> It should be noted that <em>your data are not your features</em>.  We are going to 
+            start with the simplest case, where we engineer our features to match how the labels 
+            were generated.  Specifically, the labels are a third degree polynomial in <i>x</i>, 
+            so both <b>w</b> and <b>x</b> are vectors of length four. We can then use the 
+            language of linear algebra to write our model as just a dot product: 
+            <i>y = </i><b>x</b><sup>T</sup><b>w</b>
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-04.png">
+            <img src="thumbs/Linear_Regression_slides-04.png">
+          </a>
+        </td>
+
+        <td>
+          <p> We will emphasize here that your data are not your features! Remember, our input 
+            data will be just a single number – a point on the x-axis – but we want our 
+            features to be that number to the 0th power, that number to the first power, second 
+            power, and third power. These are sometimes called <em>basis functions</em>, which 
+            transform your data into the features used to learn the model, and the basis functions can 
+            change the dimension you are working in. Here, we move from 1 to 4 dimensions. 
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-05.png">
+            <img src="thumbs/Linear_Regression_slides-05.png">
+          </a>
+        </td>
+
+        <td>
+            <p> The wonderful library <code>scikit-learn</code> will help guide us here, as it has
+            so many others.  
+            <a href="http://scikit-learn.org/">The documentation for the library</a> is a gem,
+            and could serve as a course in machine learning on its own.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-06.png">
+            <img src="thumbs/Linear_Regression_slides-06.png">
+          </a>
+        </td>
+
+        <td>
+            <p> We are going to see today three ways of recovering the coefficients of our 
+            polynomial, each of which might be the high point of a different undergraduate math 
+            course, and each of which is made easy by a different 
+            <a href="https://www.numfocus.org/">NumFOCUS</a> supported project. They are 
+            equivalent, so we can have a good argument over <em>which</em> math course, and 
+            <em>which</em> project go together, but I will argue that scikit-learn takes the 
+            approach from calculus. 
+
+          <p> Calculus is all about minimizing continuous functions. We said earlier that we want 
+          to find the "best" parameters, and scikit-learn does that by writing down the squared
+          error, and minimizing it.
+
+          <p> There's some matrix arithmetic we should look at here: <b>x</b> and <b>w</b> 
+          are both 4 x 1 column vectors, so transposing one and multiplying by the other gives 
+          us a 1 x 1 matrix, and we can subtract the number <i>y<sub>j</sub></i> from it. 
+
+          <p> Note that the squared error is not special to linear regression. Any regression model that makes a prediction can be scored with it. An emphasis of this workshop is that <em>it corresponds to an assumption of normally distributed noise</em>.  We implement the squared loss in Python, and allow <code>fit_func</code> to be any regressor that outputs a number. 
+
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-07.png">
+            <img src="thumbs/Linear_Regression_slides-07.png">
+          </a>
+        </td>
+
+        <td>
+          <p> Python makes this easy: we can fit our model with one line of scikit learn. It is worth pausing to think how wonderful it is that there is a free project that allows that to happen with so little code.
+          
+          <p>Inspecting the coefficients, we can see we recovered [0, -4, 1, 1], as we hoped, and the mean squared error is 0, which is also great. 
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-08.png">
+            <img src="thumbs/Linear_Regression_slides-08.png">
+          </a>
+        </td>
+
+        <td>
+          <p> We can also inspect our fit visually, and see that we did great.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-09.png">
+            <img src="thumbs/Linear_Regression_slides-09.png">
+          </a>
+        </td>
+
+        <td>
+          <p> Adding noise to our data changes nothing about building our model. We are now wrong about the coefficients, but in some sense that we'll make rigorous later today, this is the best we can do. We specified our model exactly, but there's random noise, and this is the best model given the data: the true coefficients would have a higher mean squared error than this one.
+        </td>
+    </tr>
+
+    <tr>
+        <td colspan="2">
+			<div style="display: inline-block">
+				<p> Now is a good time to work through <a href="Exercise 1.ipynb">the first exercise</a>. Solutions <a href="Exercise 1 Solution.ipynb">are available</a> as well.
+			</div>
+        </td>
+    </tr>
+
+	<tr>
+	  <td colspan="2">
+		<div style="display: inline-block">
+		  <a name="numpy" class=toc href="#numpy">
+			<img src="line.svg" class=logo style="float: left"></img>
+			<h1 style="float: right;">Linear Regression in Numpy</h1>
+		  </a>
+		</div>
+		<hr/>
+	  </td>
+
+	</tr>
+
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-11.png">
+            <img src="thumbs/Linear_Regression_slides-11.png">
+          </a>
+        </td>
+
+        <td>
+          <p>We finished the calculus bit of the day, and it wasn't even that bad. We did not integrate anything, we did not take any derivates, and we have not seen any pictures of Pete. Now though, we get to the best part: the part where we do linear algebra with Numpy.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-12.png">
+            <img src="thumbs/Linear_Regression_slides-12.png">
+          </a>
+        </td>
+
+        <td>
+            <p>Linear algebra is my favorite subject in math. It is very appraochable, very tidy, and a good way to start learning proofs. If everyone watched <a href="https://ocw.mit.edu/courses/mathematics/18-06-linear-algebra-spring-2010/">Gil Strang's MIT Open Courseware lectures</a>, the world would be a better place.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-13.png">
+            <img src="thumbs/Linear_Regression_slides-13.png">
+          </a>
+        </td>
+
+        <td>
+            <p> It is sometimes taught that you multiply matrices by multiplying row one by column one, then row two times column two, and so on. This approach is somewhat inscrutable, until you realize that the result is a vector of dot products. So when we have a feature matrix X, each of whose rows is a feature vector, our linear model is the matrix product <i>X</i><b>w</b> = <b>y</b>. 
+            <p> Earlier, we wrote our model as 100 dot products of features and weights, and now we are just "vectorizing" that over the entire set of features and labels.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-14.png">
+            <img src="thumbs/Linear_Regression_slides-14.png">
+          </a>
+        </td>
+
+        <td>
+            <p> We can even confirm that this works using the scikit learn model we fit earlier. Multiplying the features by the learned coefficients gives us exactly the same predictions as calling the <code>.predict</code> method. This is not a proof, but it is at least nodding suggestively that it might be true.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-15.png">
+            <img src="thumbs/Linear_Regression_slides-15.png">
+          </a>
+        </td>
+
+        <td>
+            <p> So how can we fit a model with just numpy?  We have built up the problem a little bit, but we ought to just try to solve this.  We have an equation here, so it is natural to just multiply by <i>X<sup>-1</sup></i> on both sides.
+
+            <p>The problem with that approach is that <i>X</i> is a rectangle – it is likely tall and thin – and only square matrices can even have inverses. 
+            
+            <p>Also, scarfs are for people, not dogs, but Pete looks great.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-16.png">
+            <img src="thumbs/Linear_Regression_slides-16.png">
+          </a>
+        </td>
+
+        <td>
+            <p> So we try again.  This is a common "trick" in linear algebra that has beautiful geometric intuition you can ask Gil Strang about: we multiply by the transpose on both sides. If our matrix <i>X</i> was 100 x 4, then <i>X<sup>T</sup>X</i> will just be 4 x 4. It will also <em>probably</em> have an inverse, and we will not worry about the case where it does not. 
+
+            <p>This big matrix <i>(X<sup>T</sup>X)<sup>-1</sup>X<sup>T</sup></i> is called the <em>Moore-Penrose pseudoinverse</em>. The derivation on the slide is the only way humans know how to remember the equation, and I would encourage you to memorize it too. 
+
+            <p> It has a subtle lie in it, though: it is not true! Typically we will not fit a line exactly, so there's no <b>w</b> so that <i>X</i><b>w</b> = <b>y</b>. Then it should be concerning that we found a <b>w</b> that claims to solve the equation. Inspecting closely, the very first equals sign is full of lies.
+
+            <p> Thankfully, the <b>w</b> we derive and the Moore-Penrose pseudoinverse still satisfy some nice properties.  An easy one is that if the equals sign is <em>not</em> a lie, then we will recover the correct <b>w</b>.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-17.png">
+            <img src="thumbs/Linear_Regression_slides-17.png">
+          </a>
+        </td>
+
+        <td>
+            <p><em>Optional math heavy slide</em>
+            <p>In particular, <i>P = X(X<sup>T</sup>X)<sup>-1</sup>X<sup>T</sup></i> is "an orthogonal projection matrix onto the column space of <i>X</i>". This means that <i>P</i><b>y</b> is the closest we can get in a high dimensional space to <b>y</b>, given the data. And this is "closest" in the Euclidean distance sense, which is exactly the sum of squared errors!
+            <p> The slide has two super-bonus questions for the linear algebra junkies.  We confirm two properties of this matrix: <em>Itempotence</em> is a concept that is beloved in software engineering, ane means that applying the function twice has the same effect as applying it once. <em>Orthogonality</em> means that the dot product of <b>y</b> with <i>P</i><b>y</b> is 0.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-19.png">
+            <img src="thumbs/Linear_Regression_slides-19.png">
+          </a>
+        </td>
+
+        <td>
+            <p>Back to writing code, though! Numpy is wonderful because we can just write down the Moore-Penrose pseudoinverse, and recover <b>w</b>, using chained methods. 
+            <p>When using modern Python, in particular since 3.5, you can also write it with the @ operator, which is a certain kind of nice. 
+            <p> Finally, this is such a useful matrix that numpy even has it built in, with some extra numerical stability, so we will use this one. Note that "pinv" stands for "pseudoinverse", so it is anyone's guess how to pronounce it.
+
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-20.png">
+            <img src="thumbs/Linear_Regression_slides-20.png">
+          </a>
+        </td>
+
+        <td>
+            <p> We are also going to keep emulating an sklearn API. This will let us reuse a lot of code, and make what we write a bit easier to grok. This slide has our minimal implementation of linear regression. Note we just use <code>pinv</code> to fit our coefficients, and then use matrix multiplication to make predictions.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-21.png">
+            <img src="thumbs/Linear_Regression_slides-21.png">
+          </a>
+        </td>
+
+        <td>
+          <p> Now we can use this with the exact same lines of code as our scikit-learn regressors, and it has the exact same fit that those had.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-22.png">
+            <img src="thumbs/Linear_Regression_slides-22.png">
+          </a>
+        </td>
+
+        <td>
+          <p> The noisy version, too, is straightforward, and gets the same coefficients back.
+        </td>
+    </tr>
+
+    <tr>
+        <td colspan="2">
+			<div style="display: inline-block">
+				<p>We get a little more mathy in <a href="Exercise 2.ipynb">the second exercise</a>. Solutions <a href="Exercise 2 Solution.ipynb">are available</a> as well.
+			</div>
+        </td>
+    </tr>
+
+	<tr>
+	  <td colspan="2">
+		<div style="display: inline-block; max-width: 100%;">
+		  <a name="regularization" class=toc href="#regularization">
+			<img src="line.svg" class=logo style="float: left"></img>
+			<h1 style="float: right;">Linear Regression with Regularization</h1>
+		  </a>
+		</div>
+		<hr/>
+	  </td>
+
+	</tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-24.png">
+            <img src="thumbs/Linear_Regression_slides-24.png">
+          </a>
+        </td>
+
+        <td>
+          <p> The last thing I want to talk about is regularization. I am going to use a proper train and test set here, though a little imbalanced: 20 points to train, 80 points to test.  Note that with the proper features, fitting this polynomial is still not very hard.  But now instead of 4 features for a third degree polynomial, my features will have 15 dimensions and end up fitting the data <em>too</em> well.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-25.png">
+            <img src="thumbs/Linear_Regression_slides-25.png">
+          </a>
+        </td>
+
+        <td>
+          <p> It is a little harder to glance at all the coefficients, but this bar chart shows that the first four coefficients are not particularly close to the [0, -4, 1, 1] that we expect, and the last 11 are not uniformly close to 0.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-27.png">
+            <img src="thumbs/Linear_Regression_slides-27.png">
+          </a>
+        </td>
+
+        <td>
+          <p> The plot also looks quite wiggly (technical term), and even though the mean squared error on the training set is quite low, the error on the test set is quite high.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-28.png">
+            <img src="thumbs/Linear_Regression_slides-28.png">
+          </a>
+        </td>
+
+        <td>
+          <p> This is called <em>overfitting</em>, and can happen when there are too many irrelevant features. Adding an extra feature will always improve your performance on the training set, but may degrade performance on a test set. This is a common problem with feature engineering: it can be hard to know ahead of time what the relevant features will be!
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-29.png">
+            <img src="thumbs/Linear_Regression_slides-29.png">
+          </a>
+        </td>
+
+        <td>
+          <p> One way we try to deal with overfitting is by penalizing model complexity.  
+		  <p>In particular, we add a penalization term to the cost function, and find weights that minimize this new function instead. Note that alpha is now a parameter we may need to fit, and it controls the strength of regularization. Using the sum of the squared weights is called Ridge regression, or <i>l<sup>2</sup></i> regularization.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-30.png">
+            <img src="thumbs/Linear_Regression_slides-30.png">
+          </a>
+        </td>
+
+        <td>
+          <p> Sklearn makes ridge regression just as easy as normal linear regression.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-31.png">
+            <img src="thumbs/Linear_Regression_slides-31.png">
+          </a>
+        </td>
+
+        <td>
+          <p> The coefficients it learns are even plausibly near [0, -4, 1, 1], followed by eleven 0's.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-32.png">
+            <img src="thumbs/Linear_Regression_slides-32.png">
+          </a>
+        </td>
+
+        <td>
+          <p> Lasso regression, or <i>l<sup>1</sup></i> regularization, means we penalize with the sum of the absolute value of the weights. It is also quite easy with scikit learn. For technical reasons, it may require some extra arguments, like <code>max_iter</code> here.
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+          <a href="slides/Linear_Regression_slides-33.png">
+            <img src="thumbs/Linear_Regression_slides-33.png">
+          </a>
+        </td>
+
+        <td>
+          <p> Lasso is beloved for encouraging sparsity – coefficients that are exactly 0 – instead of just encouraging them to be small, like in ridge regression. You an see that these weights are also quite near [0, -4, 1, 1].
+        </td>
+    </tr>
+
+    <tr>
+        <td colspan="2">
+			<div style="display: inline-block">
+			  <p> We finish this first section <a href="Exercise 3.ipynb">with exercises</a> playing with Ridge and Lasso regularization, before we move on to probabilistic programming.  Solutions are <a href="Exercise 3 Solution.ipynb">available here</a>.
+			</div>
+        </td>
+    </tr>
+
+</table>
+
+</div>
+
+</body>
+</html>
+

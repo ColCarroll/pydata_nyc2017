@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+
+    <title> Two views on regression </title>
+    <!-- D3js -->
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.12.0/d3.min.js"></script>
+
+    <!-- JQuery -->
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+      integrity="sha256-k2WSCIexGzOj3Euiig+TlR8gA0EmPjuc79OEeY5L45g="
+      crossorigin="anonymous"></script>
+
+    <!-- Talk -->
+    <script type="text/javascript" src="noisyData.js"></script>
+
+    <!-- css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tufte-css/1.3/tufte.min.css" />
+
+
+</head>
+
+<body>
+    <h1>Two views on regression with PyMC3 and scikit-learn</h1>
+    <p class="subtitle">Colin Carroll</p>
+    <div id='graph'> </div>
+
+    <h3>Contents:</h3>
+    <ol>
+        <li> <a href="#Introduction">Introduction</a>
+        <li> <a href="#Installation">Installation</a>
+        <li> <a href="#AlsoSee">Also See</a>
+        <li> <a href="Linear_Regression_slides.html">Linear Regression</a>
+        <li> <a href="Probabilistic_Programming_slides.html">Probabilistic Programming</a>
+        <li> <a href="Bayesian_Regression_slides.html">Bayesian Linear Regression</a>
+    </ol>
+    <h2 id="Introduction">Introduction</h2>
+    <p> This is a series of three essays, based on my notes from a <a href="https://pydata.org/nyc2017/schedule/presentation/12/">2017 PyData NYC tutorial</a>.  The first
+    two essays are completely independent, and may be used as in introduction to <a href="Linear_Regression_slides.html">linear regression</a> or <a href="Probabilistic_Programming_slides.html">probabilistic programming</a>, respectively.  The third builds on the knowledge of those two,
+    and uses the data set introduced in the first, but is fine to read if you are familiar with 
+    linear regression and probabilistic programming.
+
+    <p>The essays go along with Jupyter notebooks and exercises. You can install the requirements
+    by following <a href="#Installation">instructions below.</a>
+
+    <p>These talks cover a reasonable portion of three undergraduate courses in math, but requires only a hazy memory of the subjects to follow.  We derive linear regression, along with regularization, from the standpoint of
+    <ul>
+        <li>calculus, as the minimizer of a cost function,</li>
+        <li>linear algebra, as a projection onto a subspace, and</li>
+        <li>statistics, as the maximum a posteriori likelihood.</li>
+    </ul>
+
+    <p>The goal of this talk is to help participants understand the math underlying so much of modern machine learning. I do not expect that attendees (or readers) will have new models or libraries to try, but I do expect that they will be better at tasks like diagnosing problems in the linear parts of their neural networks, explaining why logistic regression will be good (or bad) for a task, and giving colleagues some intuition for regularization.
+
+    <h2 id="Installation">Installation</h2>
+
+    <p>If you wish to follow along in the essays and exercises (which I would recommend), the easiest way to install the requirements is using conda, which is fastest to get via 
+    <a href="https://conda.io/miniconda.html">Miniconda</a>. Should also work via pip and the supplied <a href="requirements.txt">requirements.txt</a> file.
+    <ol>
+        <li> Clone the repository from <a href="https://github.com/ColCarroll/pydata_nyc2017">https://github.com/ColCarroll/pydata_nyc2017</a>:
+            <pre class="code">git clone https://github.com/ColCarroll/pydata_nyc2017.git</pre></li>
+        <li> Navigate to the folder:
+            <pre class="code">cd pydata_nyc2017</pre></li>
+        <li> Create the conda environment:
+            <pre class="code">conda env create -f environment.yml </pre></li>
+        <li> Activate the environment with one of:
+            <pre class="code">conda activate pydata_nyc20173.6  # new conda</pre>
+            <pre class="code">source activate pydata_nyc20173.6  # OSX/Linux</pre>
+            <pre class="code">activate pydata_nyc20173.6  # Windows</pre>
+        </li>
+        <li> Start the jupyter notebook server
+            <pre class="code">jupyter notebook</pre></li>
+    </ol>
+
+    <h2 id="AlsoSee">Also See</h2>
+    <p> There were a number of other talks and workshops at PyData NYC 2017 covering similar Bayesian 
+    approaches. To mention a few talks, along with links to their videos (coming soon!):
+    <ul>
+        <li><a href="">Understanding NBA Foul Calls with Python</a> Austin Rochford</li>
+
+        <li><a href="">Diamond: mixed-effects models in Python</a> Timothy Sweetser</li>
+
+        <li><a href="">Bayesian inference in computational chemistry.</a> Chaya D. Stern</li>
+
+        <li><a href="">Keynote</a> Andrew Gelman</li>
+
+        <li><a href="">Turning PyMC3 into scikit-learn</a> Nicole Carlson</li>
+
+        <li><a href="">An Attempt At Demystifying Bayesian Deep Learning</a> Eric J. Ma</li>
+    </ul>
+
+    <p> There were also three other workshops which (like this one) were not videotaped.  
+    <ul>
+        <li><a href="https://pydata.org/nyc2017/schedule/presentation/30/">pomegranate: fast and flexible probabilistic modeling in python</a> Jacob Schreiber </li>
+        <li><a href="https://pydata.org/nyc2017/schedule/presentation/11/">Bayesian Statistics from Scratch: Building up to MCMC</a> Justin Bozonier</li>
+        <li><a href="https://pydata.org/nyc2017/schedule/presentation/91/">Stan: Bayesian Modeling and Inference Made Easy</a> Bob Carpenter</li>
+    </ul>
+
+
+</body>
+
+</html>

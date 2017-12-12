@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Linear Regression with PyMC3</title>
+<meta charset="utf-8" />
+    <!-- css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tufte-css/1.3/tufte.min.css" />
+<style>
+
+  td {
+    vertical-align: top;
+    padding: 20px;
+  }
+  #main {
+    text-align:left;
+  }
+  code {
+    background-color:#EEEEEE;
+    font-family:Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New;
+  }
+  i {
+    font-family: "Times New Roman", Times, serif;
+  }
+  img {
+    border:4px solid #196786;
+    width:300px;
+    height:225px;
+    max-width: none;
+  }
+  .logo {
+    border: none;
+    width: auto;
+    height: 4em;
+    margin-top: 3em;
+  }
+  a.toc {
+    text-decoration:none;
+    color: inherit;
+  }
+  hr {
+    border:2px solid #196786;
+  }
+  p, table {
+    width: 80%; 
+  }
+  </style>
+</head>
+
+<body>
+<div id="main">
+
+<div style="display: inline-block">
+  <img src="bayesian_reg.png" class=logo style="float: left"></img>
+  <h1 style="float: right;">Linear Regression with PyMC3</h1>
+</div>
+
+<p> This is part 3 of a three part workshop from PyData NYC in 2017. I converted my slides and notes to this essay, so I would have some artifact of the talk.  I hope you find the notes useful, and would love to hear from you about them!  That said, I likely will not change them, so that they remain a record of what was actually covered that fateful day in November. 
+<p><a href="index.html">Back to main table of contents</a>
+
+<hr/>
+
+<table cellspacing=10>
+
+<tr>
+  <td colspan="2">
+    <ol>
+      <li><a href="#linearRegression">Bayesian Linear Regreassion</a></li>
+      <li><a href="#bayesianRidge">Bayesian Ridge Regreassion</a></li>
+      <li><a href="#bayesianLasso">Bayesian Lasso Regreassion</a></li>
+      <li><a href="#conclusion">Conclusion</a></li>
+    </ol>
+  </td>
+</tr>
+
+            <tr>
+              <td colspan="2">
+                <div style="display: inline-block">
+                  <a name="linearRegression" class=toc href="#linearRegression">
+                    <img src="bayesian_reg.png" class=logo style="float: left"></img>
+                    <h1 style="float: right;">Bayesian Linear Regression</h1>
+                  </a>
+                </div>
+                <hr/>
+              </td>
+            </tr>
+
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-01.png">
+                    <img src="thumbs/Bayesian_Regression_slides-01.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p> For the last bit of the workshop, we will talk about linear regression with PyMC3. There will be linear algebra, there will be calculus, there will be statistics. Physics is awkwardly in the background, saying hi to Pete the pup.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-02.png">
+                    <img src="thumbs/Bayesian_Regression_slides-02.png">
+                  </a>
+                </td>
+
+                <td>
+                    <p>Our goal now is to model how the data is generated. But we know how the data was generated: we added some normally distributed noise to the data.
+                    <p>We know that we are doing some serious work now, because these equations are joined by <em>two different</em> operators that are not "=", "&gt;", or "&lt;". The "&sim;" means that the items on the left and the right are probability distributions, rather than a single value. If we were being careful, distributions only make sense under an integral sign, but this is useful shorthand. 
+                    <p>The "&prop;" means "proportional to". This means there is some quantity that I am claiming will not matter to the calculuation, but I encourage you to not trust me and do the bookkeeping of constants yourself.
+                    <p>In this case, we are modelling the labels <b>y</b> as being normally distributed around <i>X</i><b>w</b>, for some <b>w</b>. The last equation on the slide is the normal distribution's probability density function.  Plugging in values for <b>x</b><sub><i>j</i></sub>, <i>y<sub>j</sub></i>, and <b>w</b> will let us evaluate the probability of any single point.
+
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-03.png">
+                    <img src="thumbs/Bayesian_Regression_slides-03.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p>Now these are some equations! Before diving in, we should step back and just admire this. Greek letters, underscores, no Python code at all. We will get to some working code soon, so Dr. Sargent does not think we are bullshitters, but for now we should just revel in this for a moment.
+
+                  <p>Bringing this back into focus, the first two lines are from the previous page. They are our modelling assumption, and Bayes' rule. The third line is our assumption that the data is independent, so the probability of all the data is the product of the individual probabilities. 
+
+                  <p> Finally, we take the negative log of the whole thing. This is nice from a numerical point of view: the product of a bunch of numbers less than 1 is going to be <em>very</em> small. So we turn that unstable product into a sum of numbers that are greater than 1. Also, the log is a monotone transformation: if we maximize the log of a function, we have also maximized the function. The negative sign lets us find a minimum instead of a maximum, which is a pleasant convention.
+
+                  <p>Now all this holds for <em>any</em> probability distribution. Note that this sum comes from our likelihood, and the term on the right is called our prior. What happens when we plug in the normal distribution for our likelihood?
+
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-04.png">
+                    <img src="thumbs/Bayesian_Regression_slides-04.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p>The exponential and logarithm cancel each other out, and we are left with minimizing the sum of squares. That means the maximum a posteriori estimate will be exactly the set of weights that sklearn gives us! This is, of course, assuming that statistics, linear algebra, python, sklearn, and PyMC3 all work correctly.
+                  <p>Also look at Pete. He thinks he is a detective!
+
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-05.png">
+                    <img src="thumbs/Bayesian_Regression_slides-05.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p> We should use this model, and confirm that all these fields and software libraries are indeed correct. Here is the exact same data set that we used at the start of the workshop.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-06.png">
+                    <img src="thumbs/Bayesian_Regression_slides-06.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p> This is our linear model. We put an improper prior on the weights, so that any set of weights is equally likely. We fudge a little and put a prior on the standard deviation to avoid some problems in sampling a model with no noise. Finally, we define our likelihood in the last line. The function returns a PyMC3 model, which can be used as a context manager, so we can write some slick code.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-07.png">
+                    <img src="thumbs/Bayesian_Regression_slides-07.png">
+                  </a>
+                </td>
+
+                <td>
+                    <p> Here we go! The sampling step actually is a little tricky because there is <em>no</em> noise: if a positive standard deviation is sampled, it ends up having very low probability.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-08.png">
+                    <img src="thumbs/Bayesian_Regression_slides-08.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p> The trace plot looks a little funny, but notice the scale on the standard deviation is 1e-9, and our probability distributions for the weights are really just point masses. This is a funny thing to model with continuous distributions, but PyMC3 does okay with it.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-09.png">
+                    <img src="thumbs/Bayesian_Regression_slides-09.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p> Inspecting the sampled weights, we see that every single sample was the exact right weights.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-10.png">
+                    <img src="thumbs/Bayesian_Regression_slides-10.png">
+                  </a>
+                </td>
+
+                <td>
+                    <p>We are actually going to wrap the PyMC3 model inside a class with an sklearn interface, like we did earlier with the numpy model. We will just instantiate it with a function that eats a tuple <code>X</code>, <code>y</code>, and returns a PyMC3 model. Note that the predict method will be multiplying our data by a trace, so it will end up giving 2,000 plausible versions of our labels.
+                    <p>(<em>Editor: <a href="">Nicole Carlson</a> gave a whole talk on turning PyMC3 into sklearn at the conference, and I recommend you catch the video</em>)
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-11.png">
+                    <img src="thumbs/Bayesian_Regression_slides-11.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p>We can use this new class to fit the noisy version of our data. This takes a little longer, but we are not just sampling 2,000 copies of the same weights anymore.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-12.png">
+                    <img src="thumbs/Bayesian_Regression_slides-12.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p>We can inspect the traceplot and see the weights are a little more dispersed, and the standard deviation is estimated to be somewhat less than 1.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-13.png">
+                    <img src="thumbs/Bayesian_Regression_slides-13.png">
+                  </a>
+                </td>
+
+                <td>
+                    <p> The <code>utils.plotter</code> function actually has a few tricks up its sleeve. We plot 100 random sets of labels from the fitted model here, so that blue line is actually many lines. It is a pretty confident fit, so it does not disperse very much!
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-14.png">
+                    <img src="thumbs/Bayesian_Regression_slides-14.png">
+                  </a>
+                </td>
+
+                <td>
+                    <p>Remember that we also sampled the standard deviation. It is helpful to remember that we are sampling from a joint probability distribution, so each set of weights comes with its own sampled standard deviation. We plot here are 100 sets of weights, along with *their* standard deviations. There is a line at 1 standard deviation, and another at 2 standard deviations. 
+                    <p>We knew a lot about modelling this data, so the fit looks almost too good.  We will look at these plots again in a bad model later. For now observe that only one or two of the 100 points lies outside the second standard deviation line.
+                </td>
+            </tr>
+
+            <tr> 
+                <td colspan=2> 
+                    <p> <a href="Exercise 6.ipynb">Exercise 6</a> is some practice at working with traces from a linear regression trace, and verifying that the right proportion of the data is 1 standard deviation off.  Solutions are <a href="Exercise 6 Solution.ipynb">available here</a>.
+                </td>
+            </tr>
+
+            <tr>
+              <td colspan="2">
+                <div style="display: inline-block">
+                  <a name="bayesianRidge" class=toc href="#bayesianRidge">
+                    <img src="bayesian_reg.png" class=logo style="float: left"></img>
+                    <h1 style="float: right;">Bayesian Ridge Regression</h1>
+                  </a>
+                </div>
+                <hr/>
+              </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-16.png">
+                    <img src="thumbs/Bayesian_Regression_slides-16.png">
+                  </a>
+                </td>
+
+                <td>
+                    <p> Now the takeaway from this last bit of the talk is that when we are regularizing, we are just putting a prior on our weights. When this happens in sklearn, the prior is implicit: a penalty expressing an idea of what our best model looks like. When this happens in a Bayesian context like PyMC3, the prior is explicit, expresses our beliefs about the weights, and <em>can be</em> principled.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-17.png">
+                    <img src="thumbs/Bayesian_Regression_slides-17.png">
+                  </a>
+                </td>
+
+                <td>
+                    <p> Ridge regression, for example, just means assuming our weights are normally distributed. Here is the pdf for a normal distribution again, this time centered at 0 with standard deviation <i>σ<sub>w</sub></i>.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-18.png">
+                    <img src="thumbs/Bayesian_Regression_slides-18.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p> Recall that for any model, the negative log likelihood will be in this form: a likelihood minus a prior. We haven't change the likelihood, so it is still the sum of squared errors, but now our prior is the sum of the squared weights. Notice that this is proportional to the cost function from ridge regression in sklearn, so the maximum a posteriori estimate for this model is exactly the ridge regression weights.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-19.png">
+                    <img src="thumbs/Bayesian_Regression_slides-19.png">
+                  </a>
+                </td>
+
+                <td>
+                    <p> Here is that model implemented in Python. The differences from the first model are that we have changed <b>w</b> from a <code>Flat</code> distribution to a Normal distribution, and have added a term for the scale of the weights.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-20.png">
+                    <img src="thumbs/Bayesian_Regression_slides-20.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p> We can try the ridge model on the overfitting data from earlier along with our handy model class.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-21.png">
+                    <img src="thumbs/Bayesian_Regression_slides-21.png">
+                  </a>
+                </td>
+
+                <td>
+                    <p>The trace plot gets hard to read with so many <i>w</i>'s – there are fifteen now, remember – but there is nothing glaringly wrong in this plot.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-22.png">
+                    <img src="thumbs/Bayesian_Regression_slides-22.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p> Here are 100 of our predictions on the training data.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-23.png">
+                    <img src="thumbs/Bayesian_Regression_slides-23.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p> And here are the predictions along with lines for the standard deviation estimates.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-24.png">
+                    <img src="thumbs/Bayesian_Regression_slides-24.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p> It looks worse when we plot against the test data instead.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-25.png">
+                    <img src="thumbs/Bayesian_Regression_slides-25.png">
+                  </a>
+                </td>
+
+                <td>
+                    <p> But the error estimates actually end up capturing a lot of the uncertainty properly here, particularly around <i>x = 1</i>.
+                </td>
+            </tr>
+
+            <tr>
+                <td colspan=2>
+                    <p> <a href="Exercise 7.ipynb">Exercise 7</a> has you essentially derive the rest of the talk yourself.  Check out <a href="Exercise 7 Solution.ipynb">solutions here</a>.
+                </td>
+            </tr>
+
+            <tr>
+              <td colspan="2">
+                <div style="display: inline-block">
+                  <a name="bayesianLasso" class=toc href="#bayesianLasso">
+                    <img src="bayesian_reg.png" class=logo style="float: left"></img>
+                    <h1 style="float: right;">Bayesian Lasso Regression</h1>
+                  </a>
+                </div>
+                <hr/>
+              </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-27.png">
+                    <img src="thumbs/Bayesian_Regression_slides-27.png">
+                  </a>
+                </td>
+
+                <td>
+                    <p> Remember putting a prior that looked like <i>e<sup>-∑w<sub>j</sub><sup>2</sup></sup></i> on the weights gave us ridge regression. It is quick to show that putting a prior that looks like <i>e<sup>-∑|w<sub>j</sub>|</sup></i> gives us Lasso regression as a maximum a posteriori estimate. That particular distribution (once we normalize it) is the <em>Laplace disribution</em>, and it is built into PyMC3.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-28.png">
+                    <img src="thumbs/Bayesian_Regression_slides-28.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p> We have seen the rest of this talk already: first, we sample from our model.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-29.png">
+                    <img src="thumbs/Bayesian_Regression_slides-29.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p> The traceplot looks fine, but always reasonable to check it out.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-30.png">
+                    <img src="thumbs/Bayesian_Regression_slides-30.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p> Now we can check out those spaghetti plots!  First we plot against the training data, just for sanity.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-31.png">
+                    <img src="thumbs/Bayesian_Regression_slides-31.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p>These first two are good – remember that the fainter, greyer lines are the standard errors, and remember that we should expect our fit to be better on this data, since the model has already seen this training data.
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                  <a href="slides/Bayesian_Regression_slides-33.png">
+                    <img src="thumbs/Bayesian_Regression_slides-32.png">
+                  </a>
+                </td>
+
+                <td>
+                  <p> Now when we plot against the test data the fit still looks pretty good.
+                </td>
+            </tr>
+
+	<tr>
+	  <td colspan="2">
+		<div style="display: inline-block">
+		  <a name="conclusion" class=toc href="#conclusion">
+			<img src="bayesian_reg.png" class=logo style="float: left"></img>
+			<h1 style="float: right;">Conclusion</h1>
+		  </a>
+		</div>
+		<hr/>
+	  </td>
+
+	</tr>
+
+
+            <tr>
+                <td colspan=2>
+                    <div class="epigraph">
+                        <blockquote>
+                        <p>...the fact that the classical Lasso can be recovered as the MAP estimate of the Bayesian Lasso does not make the Bayesian Lasso useful.
+                        <footer>
+                            Dan Simpson, <a href="http://andrewgelman.com/2017/11/02/king-must-die/">The King Must Die</a>
+                        </footer>
+                        </blockquote>
+                    </div>
+                    <p> I want to conclude with a warning that the Bayesian ridge and Bayesian Lasso we talked about here are not models you should actually use. These were presented to show that you could recover scikit-learn models from a Bayesian model, and that you were secretly making some assumptions when you used these models.   
+                    <p>In practice, what is to be done? We live in a Bayesian world, and you should model your weights using prior information you have about them. If you wish to model sparsity in your weights, Aki Vehtari and Juho Piironen have <a href="https://arxiv.org/abs/1707.01694">a recent paper</a> proposing a better prior for a Bayesian treatment of sparse weights, and does a good job summarizing prior work on the topic. 
+                    <p>It is a flexible world, and we should celebrate that.  Thank you for coming.
+                </td>
+            </tr>
+
+</table>
+
+</div>
+
+</body>
+</html>
+
